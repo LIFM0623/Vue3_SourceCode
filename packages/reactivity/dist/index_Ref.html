@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // ==========================ref===================
+      // 因为 当前reative 只能进行对象的代理
+      import {
+        ref,
+        effect,
+        reactive,
+        toRef,
+        toRefs,
+        proxyRefs
+      } from './reactivity.js';
+      // ref 示例
+      //   const flag = ref(false);
+      //   let flag1 = {
+      //     _v: false,
+      //     get value() {   // 收集effect
+      //       return this._v;
+      //     },
+      //     set value(newValue) {  // 更新 effect
+      //       this._v = newValue;
+      //     }
+      //   };
+
+      //   effect(() => {
+      //     app.innerHTML = flag.value ? 'jw' : 30;
+      //   });
+      //   setTimeout(() => {
+      //     flag.value = true;
+      //   }, 1000);
+
+      // toRef
+      let state = reactive({ name: 'arrebol', age: 30 });
+
+      // let name = toRef(state, 'name');
+      // let age = toRef(state, 'age');
+      // console.log(name,name.value);
+
+      // toRefs
+      // let { name, age } = state; 直接进行结构会丧失响应式
+      let { name, age } = toRefs(state);
+      console.log(name, name.value, age, age.value);
+
+      // proxyRefs  解决模板内部 REF.value 的问题
+      let proxy = proxyRefs({ ...toRefs(state) }); // 在取值是自动帮我们 .value
+    </script>
+  </body>
+</html>

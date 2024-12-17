@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // 原生的
+      // ??? 我遇到一个问题 就是pnpm i 的网上的包会被本地的替换掉
+      //   import {
+      //     reactive,
+      //     effect
+      //   } from '/node modules/@vue/reactivity/dist/reactivity.esm-browser.js';
+
+      // 自己的
+      // reactive 让数据变成响应式
+      // effect 副作用 数据变化后可以让effect 重新执行 组件、watch、computed 都是基于effect实现的
+      import { reactive, effect } from './reactivity.js';
+
+      let obj = { name: 'arrebol', age: 12 };
+      const state1 = reactive(obj);
+
+      console.log(state1.age, state1.name);
+      // // state1  被代理后 一定有get和set 方法 ，判断不能重复进行代理
+      // const state2 = reactive(obj);
+      // console.log(state1);
+
+      // console.log(state1 === state2);   // 相同 但是同一个对象 需要做缓存
+
+      let runner = effect(
+        () => {
+          // console.log(state1.age, state1.name);
+          app.innerHTML = state1.age;
+        },
+        {
+          scheduler: () => {
+            console.log('更新了 不重新渲染 走自己的逻辑');
+            runner();
+          }
+        }
+      );
+      // effect(() => {
+      //   console.log(state1.age);
+      // });
+
+      setTimeout(() => {
+        state1.age++;
+
+        setTimeout(() => {
+          // 当前属性没有被页面应用 所以他的effect 应该清理掉不应该继续保存在targetMap中
+          state1.name++;
+          // 要实现 上述清理 简单diff算法
+        }, 200);
+      }, 200);
+
+      // 下方调用会产生问题 执行最后一个 log 时候 他的activeEffect 指向为 undifinde
+      // 解决方案: 最开始 利用“栈”进行解决 (old)
+      // （new） let lastEffect = activeEffect;   activeEffect = this;   执行完毕 activeEffect = lastEffect;
+      // effect(() => {
+      //   console.log(state1.age);
+      //   effect(() => {
+      //     console.log(state1.name);
+      //   });
+
+      //   console.log(state1.age);
+      // });
+    </script>
+  </body>
+</html>
