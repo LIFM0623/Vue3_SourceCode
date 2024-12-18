@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+        import {} from "./runtime-dom.js"
+
+      // 1. createRenderer 我们可以自己创建渲染器 (让我们自己提供渲染方式)
+      // 2. render 用内置的渲染器来进行渲染 （渲染dom元素）
+      // 3. h 方法可以创建一个虚拟dom (type,prosOrChildren,children)
+
+      //  runtime-dom 他的作用就是提供DOM API （提供一系列dom操作的api 方法）
+
+      // @vue/runtime-dom -> @vue/runtime-core -> @vue/reactivity
+
+      let ele = h('h1', 'handsome jw');
+
+      const renderer = createRenderer({
+        createElement(type) {
+          //需要创建一个元素
+          // cavans 调用对应api 进行渲染
+          //   console.log(type);
+          return document.createElement('h1');
+        },
+        setElementText(el, text) {
+          //需要给元素设置文本
+          //   console.log(el, text);
+          el.textContent = text;
+        },
+        insert(el, container) {
+          //需要将元素插入到父元素中
+          //   console.log(el, container);
+          container.appendChild(el);
+        },
+      });
+
+      renderer.render(ele, app);
+    </script>
+  </body>
+</html>
