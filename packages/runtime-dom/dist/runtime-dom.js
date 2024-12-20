@@ -1,4 +1,62 @@
-// packages/runtime-core/src/index.ts
+// packages/shared/src/index.ts
+var isObject = (value) => {
+  return value !== null && typeof value === "object";
+};
+function isString(value) {
+  return typeof value === "string";
+}
+
+// packages/runtime-core/src/createVnode.ts
+function isVode(value) {
+  return value?.__v_isvnode;
+}
+function createVnode(type, props, children) {
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : 0;
+  const vnode = {
+    __v_isvnode: true,
+    type,
+    props,
+    children,
+    key: props?.key,
+    // diff 算法需要的key
+    el: null,
+    //   虚拟节点对应的真实节点
+    shapeFlag
+  };
+  if (children) {
+    if (Array.isArray(children)) {
+      vnode.shapeFlag |= 16 /* ARRAY_CHILDREN */;
+    } else {
+      children = String(children);
+      vnode.shapeFlag |= 8 /* TEXT_CHILDREN */;
+    }
+  }
+  return vnode;
+}
+
+// packages/runtime-core/src/h.ts
+function h(type, propsOrChildren, children) {
+  const l = arguments.length;
+  if (l === 2) {
+    if (isObject(propsOrChildren) && !Array.isArray(propsOrChildren)) {
+      if (isVode(propsOrChildren)) {
+        return createVnode(type, null, [propsOrChildren]);
+      } else {
+        return createVnode(type, propsOrChildren);
+      }
+    }
+    return createVnode(type, null, propsOrChildren);
+  } else {
+    if (l > 3) {
+      children = Array.from(arguments).slice(2);
+    } else if (l === 3 && isVode(children)) {
+      children = [children];
+    }
+    return createVnode(type, propsOrChildren, children);
+  }
+}
+
+// packages/runtime-core/src/createRenderer.ts
 function createRenderer(renderOptions2) {
   const {
     insert: hostInsert,
@@ -11,7 +69,36 @@ function createRenderer(renderOptions2) {
     nextSibling: hostNextSibling,
     patchProp: hostPatchProp
   } = renderOptions2;
+  const mountChildren = (children, container) => {
+    for (let i = 0; i < children.length; i++) {
+      patch(null, children[i], container);
+    }
+  };
+  const mountElement = (vnode, container) => {
+    const { type, children, props, shapeFlag } = vnode;
+    let el = hostCreateElement(type);
+    if (props) {
+      for (let key in props) {
+        hostPatchProp(el, key, null, props[key]);
+      }
+    }
+    if (shapeFlag & 8 /* TEXT_CHILDREN */) {
+      hostSetElementText(el, children);
+    } else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+      mountChildren(children, el);
+    }
+    hostSetElementText(el, children);
+    hostInsert(el, container);
+  };
+  const patch = (n1, n2, container) => {
+    if (n1 === n2) return;
+    if (n1 === null) {
+      mountElement(n2, container);
+    }
+  };
   const render2 = (vnode, container) => {
+    patch(container._vnode || null, vnode, container);
+    container._vnode = vnode;
   };
   return {
     render: render2
@@ -129,6 +216,9 @@ var render = (vnode, container) => {
 };
 export {
   createRenderer,
+  createVnode,
+  h,
+  isVode,
   render
 };
 //# sourceMappingURL=runtime-dom.js.map
