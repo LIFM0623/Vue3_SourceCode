@@ -1,3 +1,5 @@
+import { ShapeFlags } from '@vue/shared';
+
 export function createRenderer(renderOptions) {
   // core 中不关心如何渲染
 
@@ -13,9 +15,34 @@ export function createRenderer(renderOptions) {
     patchProp: hostPatchProp
   } = renderOptions;
 
-  const mountElement = (vnode,container)=>{
-    hostCreateElement()
-  }
+  const mountChildren = (children, container) => {
+    for (let i = 0; i < children.length; i++) {
+      // children[i] 可是能纯文本
+      patch(null, children[i], container);
+    }
+  };
+
+  const mountElement = (vnode, container) => {
+    // hostCreateElement()
+
+    const { type, children, props, shapeFlag } = vnode;
+    let el = hostCreateElement(type);
+
+    if (props) {
+      for (let key in props) {
+        hostPatchProp(el, key, null, props[key]);
+      }
+    }
+    // 9 & 8 > 0 说明儿子是文本
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      hostSetElementText(el, children);
+    } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+      mountChildren(children, el);
+    }
+
+    hostSetElementText(el, children);
+    hostInsert(el, container);
+  };
 
   // 渲染走这里 更新也走这里
   const patch = (n1, n2, container) => {
