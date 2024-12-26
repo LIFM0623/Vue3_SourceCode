@@ -1,5 +1,6 @@
 import { ShapeFlags } from '@vue/shared';
 import { isSameVode } from './createVnode';
+import getSequence from './seq';
 
 export function createRenderer(renderOptions) {
   // core 中不关心如何渲染
@@ -77,6 +78,7 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  // vue3 中分为两种 全量diff(递归diff)  快速diff(靶向更新)->基于模板定义
   // 比较两个儿子的差异 来更新dom元素
   const patchKeyedChildren = (c1, c2, el) => {
     // appendChild  removeChild insertBefore
@@ -137,7 +139,11 @@ export function createRenderer(renderOptions) {
       let s1 = i; // 老的头
       let s2 = i; // 新的头
 
-      const ketToNewIndexMap = new Map(); // 新的索引和key的映射关系  快速查找老的是否在新的里边存在
+      const ketToNewIndexMap = new Map(); // 新的索引和key的映射关系  快速查找老的是否在新的里边存在、
+      let toBePatched = e2 - s2 + 1; // 要倒叙插入的元素个数
+
+      let newIndexToOldMapIndex = new Array(toBePatched).fill(0); // 新的索引和老的索引的映射关系  快速查找老的在新的里边的位置
+
       for (let i = s2; i <= e2; i++) {
         const vnode = c2[i];
         ketToNewIndexMap.set(vnode.key, i);
@@ -152,21 +158,30 @@ export function createRenderer(renderOptions) {
           unmount(vnode);
         } else {
           // 比较前后节点差异 更新属性和儿子
+          // 我们的 i  可能是0的情况 为了保证0 是代表没有比对过的 没有歧义
+          newIndexToOldMapIndex[newIndex - s2] = i + 1; // 老的索引和新的索引的映射关系  快速查找新的在老的里边的位置
           patch(vnode, c2[newIndex], el); //复用
         }
       }
       // 调整顺序
       // 按照新的队列 倒序插入
-      let toBePatched = e2 - s2 + 1; // 要倒叙插入的元素个数
+
+      let increasingSeq = getSequence(newIndexToOldMapIndex); // 最长递增子序列
+      let j = increasingSeq.length - 1; // 最长递增子序列的索引
+
       for (let i = toBePatched - 1; i >= 0; i--) {
         const newIndex = c2[s2 + i]; // 把它作为参照物 进行插入
         const anchor = c2[newIndex + 1]?.el;
         const vnode = c2[newIndex];
         if (!vnode.el) {
           // 列表中新增的元素
-          patch(null, vnode, el, anchor); 
+          patch(null, vnode, el, anchor);
         } else {
-          hostInsert(vnode.el, el, anchor);  // 倒序插入
+          if (i == increasingSeq[j]) {
+            j--; // diff 通过 最大递增子序列进行优化
+          } else {
+            hostInsert(vnode.el, el, anchor); // 倒叙插入
+          }
         }
       }
     }
