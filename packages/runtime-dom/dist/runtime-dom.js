@@ -110,11 +110,14 @@ function createRenderer(renderOptions2) {
       }
     }
   };
+  const patchChildren = (n1, n2, el) => {
+  };
   const patchElement = (n1, n2, container) => {
     let el = n2.el = n1.el;
     let oldProps = n1.props || {};
     let newProps = n2.props || {};
     patchProps(oldProps, newProps, el);
+    patchChildren(n1, n2, el);
   };
   const patch = (n1, n2, container) => {
     if (n1 === n2) return;

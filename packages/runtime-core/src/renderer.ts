@@ -70,6 +70,34 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  const unmountChildren = (children) => {
+    for (let i = 0; i < children.length; i++) {
+      let el = children[i].el;
+      unmount(el);
+    }
+  };
+
+  const patchChildren = (n1, n2, container) => {
+    // text array null
+    const c1 = n1.children;
+    const c2 = n2.children;
+
+    const preShaprFlag = n1.shapeFlag;
+    const shapeFlag = n2.shapeFlag;
+
+    //.1.新的是文本 老的是数组移除
+    //2.新的是文本 老的也是文本，内容不相同替换
+    //3.老的是数组，新的是数组，全量 diff·算法
+    //4.老的是数组,新的不是数组，移除者的子节点
+    //5.老的是文本新的是空
+    //6.老的是文本新的是数组
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      if (preShaprFlag & ShapeFlags.ARRAY_CHILDREN) {
+        unmountChildren(c1);
+      }
+    }
+  };
+
   const patchElement = (n1, n2, container) => {
     // 1. 比较元素的差异 肯定要复用dom元素
     // 2. 比较属性和元素的子节点
@@ -80,6 +108,8 @@ export function createRenderer(renderOptions) {
 
     // hostPatchProp 只针对某一个属性来处理
     patchProps(oldProps, newProps, el);
+    // 比较儿子
+    patchChildren(n1, n2, el);
   };
 
   // 渲染走这里 更新也走这里

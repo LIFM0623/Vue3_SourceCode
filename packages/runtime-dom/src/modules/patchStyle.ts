@@ -6,8 +6,10 @@ export default function patchStyle(el, prevValue, nextValue) {
   }
   if (prevValue) {
     for (let key in prevValue) {
-      if (nextValue[key] == null) {
-        style[key] = null; // 旧样式中有的 新样式中没有的要清空
+      if (nextValue) {
+        if (nextValue[key] == null) {
+          style[key] = null; // 旧样式中有的 新样式中没有的要清空
+        }
       }
     }
   }
