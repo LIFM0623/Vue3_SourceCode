@@ -1,5 +1,5 @@
 import { ShapeFlags } from '@vue/shared';
-import { isSameVode } from './createVnode';
+import { isSameVode, Text } from './createVnode';
 import getSequence from './seq';
 
 export function createRenderer(renderOptions) {
@@ -243,6 +243,19 @@ export function createRenderer(renderOptions) {
     patchChildren(n1, n2, el);
   };
 
+  const processText = (n1,n2,container)=>{
+    if(n1 === null){
+      // 虚拟节点关联真实节点  将节点插入页面中
+       n2.el =  hostCreateText(n2.children)
+       hostInsert(n2.el,container)
+    }else{
+      const el = n2.el = n1.el
+      if(n1.children !== n2.children){
+        hostSetText(el,n2.children)
+      }
+    }
+  }
+
   // 渲染走这里 更新也走这里
   const patch = (n1, n2, container, anchor = null) => {
     if (n1 === n2) return; // 两次渲染同一个元素 直接跳过
@@ -252,8 +265,17 @@ export function createRenderer(renderOptions) {
       unmount(n1);
       n1 = null; // 就会执行后续n2的初始化
     }
-    // n1.shapeFlag
-    processElement(n1, n2, container, anchor); // 对元素处理
+
+    // type
+    const { type } = n2;
+    switch (type) {
+      case Text:
+        processText(n1, n2, container);
+        break;
+      default:
+        // n1.shapeFlag
+        processElement(n1, n2, container, anchor); // 对元素处理
+    }
   };
 
   const unmount = (vnode) => {
