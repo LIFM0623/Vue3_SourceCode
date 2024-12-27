@@ -1,5 +1,5 @@
 import { ShapeFlags } from '@vue/shared';
-import { isSameVode, Text } from './createVnode';
+import { Fragment, isSameVode, Text } from './createVnode';
 import getSequence from './seq';
 
 export function createRenderer(renderOptions) {
@@ -243,18 +243,26 @@ export function createRenderer(renderOptions) {
     patchChildren(n1, n2, el);
   };
 
-  const processText = (n1,n2,container)=>{
-    if(n1 === null){
+  const processText = (n1, n2, container) => {
+    if (n1 === null) {
       // 虚拟节点关联真实节点  将节点插入页面中
-       n2.el =  hostCreateText(n2.children)
-       hostInsert(n2.el,container)
-    }else{
-      const el = n2.el = n1.el
-      if(n1.children !== n2.children){
-        hostSetText(el,n2.children)
+      n2.el = hostCreateText(n2.children);
+      hostInsert(n2.el, container);
+    } else {
+      const el = (n2.el = n1.el);
+      if (n1.children !== n2.children) {
+        hostSetText(el, n2.children);
       }
     }
-  }
+  };
+
+  const processFragment = (n1, n2, container) => {
+    if (n1 === null) {
+      mountChildren(n2.children, container);
+    } else {
+      patchChildren(n1, n2, container);
+    }
+  };
 
   // 渲染走这里 更新也走这里
   const patch = (n1, n2, container, anchor = null) => {
@@ -272,6 +280,9 @@ export function createRenderer(renderOptions) {
       case Text:
         processText(n1, n2, container);
         break;
+      case Fragment:
+        processFragment(n1, n2, container);
+        break;
       default:
         // n1.shapeFlag
         processElement(n1, n2, container, anchor); // 对元素处理
@@ -279,7 +290,11 @@ export function createRenderer(renderOptions) {
   };
 
   const unmount = (vnode) => {
-    hostRemove(vnode.el);
+    if (vnode.type === Fragment) {
+      unmountChildren(vnode.children);
+    } else {
+      hostRemove(vnode.el);
+    }
   };
   // 多次调用 render 会进行虚拟节点得比较 再进行更新
   const render = (vnode, container) => {
@@ -288,11 +303,11 @@ export function createRenderer(renderOptions) {
       if (container._vnode) {
         unmount(container._vnode);
       }
+    } else {
+      // 将虚拟节点变成正是节点进行渲染
+      patch(container._vnode || null, vnode, container);
+      container._vnode = vnode;
     }
-    // 将虚拟节点变成正是节点进行渲染
-    patch(container._vnode || null, vnode, container);
-
-    container._vnode = vnode;
   };
 
   return {
