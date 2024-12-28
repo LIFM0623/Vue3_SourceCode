@@ -1,6 +1,8 @@
 import { ShapeFlags } from '@vue/shared';
 import { Fragment, isSameVode, Text } from './createVnode';
 import getSequence from './seq';
+import { reactive, ReactiveEffect } from '@vue/reactivity';
+import { queueJob } from './scheduler';
 
 export function createRenderer(renderOptions) {
   // core 中不关心如何渲染
@@ -264,6 +266,82 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  const initProps = (instance, rawProps) => {
+    const props = {};
+    const attrs = {};
+    const propsOptions = instance.propsOptions || {};
+
+    if (rawProps) {
+      for (let key in rawProps) {
+        const value = rawProps[key];  // value 校验
+        if(key in propsOptions) {
+          props[key] = value;  // props 不需要深度代理 组件不能更改props
+        } else {
+          attrs[key] = value;
+        }
+      }
+    }
+    instance.props = reactive(props);
+    instance.attrs = attrs;
+  };
+
+  const mountComponent = (vnode, container, anchor) => {
+    // 组件可以基于自己的状态重新渲染 effect
+    const { data = () => {}, render, props, propsOptions = {} } = vnode.type;
+    const state = reactive(data());
+
+    const instance = {
+      state,
+      vnode,
+      subTree: null,
+      isMounted: false,
+      update: null,
+      props: {},
+      attrs: {},
+      propsOptions,
+      component: null
+    };
+
+    // 根据 propsOptions 区分出 props 和 attrs
+    vnode.component = instance;
+    // 元素更新 n2.el = n1.el
+    // 组件更新 n2.component.subTree.el = n1.component.subTree.el;
+    initProps(instance, vnode.props);
+
+    const componentUpdateFn = () => {
+      // 区分 首次还是之后的更新
+      if (!instance.isMounted) {
+        const subTree = render.call(state, state);
+        instance.subTree = subTree;
+        patch(null, subTree, container, anchor);
+        instance.isMounted = true;
+      } else {
+        // 基于状态的组件更新
+        const subTree = render.call(state, state);
+        patch(instance.subTree, subTree, container, anchor);
+        instance.subTree = subTree;
+      }
+    };
+
+    const effect = new ReactiveEffect(componentUpdateFn, () =>
+      queueJob(update)
+    );
+
+    const update = (instance.update = () => {
+      effect.run();
+    });
+
+    update();
+  };
+
+  const processCompoent = (n1, n2, container, anchor) => {
+    if (n1 === null) {
+      mountComponent(n2, container, anchor);
+    } else {
+      // 组件更新
+    }
+  };
+
   // 渲染走这里 更新也走这里
   const patch = (n1, n2, container, anchor = null) => {
     if (n1 === n2) return; // 两次渲染同一个元素 直接跳过
@@ -275,7 +353,7 @@ export function createRenderer(renderOptions) {
     }
 
     // type
-    const { type } = n2;
+    const { type, shapeFlag } = n2;
     switch (type) {
       case Text:
         processText(n1, n2, container);
@@ -284,8 +362,12 @@ export function createRenderer(renderOptions) {
         processFragment(n1, n2, container);
         break;
       default:
-        // n1.shapeFlag
-        processElement(n1, n2, container, anchor); // 对元素处理
+        if (shapeFlag & ShapeFlags.ELEMENT) {
+          processElement(n1, n2, container, anchor); // 对元素处理
+        } else if (shapeFlag & ShapeFlags.COMPONENT) {
+          // 对组件进行处理 vue3函数时组件 废弃了 没有性能节约
+          processCompoent(n1, n2, container, anchor);
+        }
     }
   };
 
