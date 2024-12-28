@@ -10,4 +10,9 @@ export function isString(value) {
   return typeof value === 'string';
 }
 
-export * from './shapeFlags'
+export * from './shapeFlags';
+
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+export function hasOwn(target, key) {
+  return hasOwnProperty.call(target, key);
+}

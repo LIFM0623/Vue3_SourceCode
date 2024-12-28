@@ -1,8 +1,9 @@
-import { ShapeFlags } from '@vue/shared';
+import { hasOwn, ShapeFlags } from '@vue/shared';
 import { Fragment, isSameVode, Text } from './createVnode';
 import getSequence from './seq';
 import { reactive, ReactiveEffect } from '@vue/reactivity';
 import { queueJob } from './scheduler';
+import { createComponentInstance, setupComponent } from './component';
 
 export function createRenderer(renderOptions) {
   // core 中不关心如何渲染
@@ -266,58 +267,18 @@ export function createRenderer(renderOptions) {
     }
   };
 
-  const initProps = (instance, rawProps) => {
-    const props = {};
-    const attrs = {};
-    const propsOptions = instance.propsOptions || {};
-
-    if (rawProps) {
-      for (let key in rawProps) {
-        const value = rawProps[key];  // value 校验
-        if(key in propsOptions) {
-          props[key] = value;  // props 不需要深度代理 组件不能更改props
-        } else {
-          attrs[key] = value;
-        }
-      }
-    }
-    instance.props = reactive(props);
-    instance.attrs = attrs;
-  };
-
-  const mountComponent = (vnode, container, anchor) => {
-    // 组件可以基于自己的状态重新渲染 effect
-    const { data = () => {}, render, props, propsOptions = {} } = vnode.type;
-    const state = reactive(data());
-
-    const instance = {
-      state,
-      vnode,
-      subTree: null,
-      isMounted: false,
-      update: null,
-      props: {},
-      attrs: {},
-      propsOptions,
-      component: null
-    };
-
-    // 根据 propsOptions 区分出 props 和 attrs
-    vnode.component = instance;
-    // 元素更新 n2.el = n1.el
-    // 组件更新 n2.component.subTree.el = n1.component.subTree.el;
-    initProps(instance, vnode.props);
-
+  function setupRenderEffect(instance, container, anchor) {
+    const { render } = instance;
     const componentUpdateFn = () => {
       // 区分 首次还是之后的更新
       if (!instance.isMounted) {
-        const subTree = render.call(state, state);
+        const subTree = render.call(instance.proxy, instance.proxy);
         instance.subTree = subTree;
         patch(null, subTree, container, anchor);
         instance.isMounted = true;
       } else {
         // 基于状态的组件更新
-        const subTree = render.call(state, state);
+        const subTree = render.call(instance.proxy, instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
       }
@@ -332,6 +293,18 @@ export function createRenderer(renderOptions) {
     });
 
     update();
+  }
+
+  const mountComponent = (vnode, container, anchor) => {
+    // 1. 先创建组件实例
+    // 2. 给实例的属性赋值
+    // 3. 创建一个effect
+
+    const instance = (vnode.component = createComponentInstance(vnode));
+
+    setupComponent(instance);
+
+    setupRenderEffect(instance, container, anchor);
   };
 
   const processCompoent = (n1, n2, container, anchor) => {
