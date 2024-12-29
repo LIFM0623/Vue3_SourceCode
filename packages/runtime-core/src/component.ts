@@ -76,7 +76,7 @@ export function setupComponent(instance) {
   // 赋值代理对象
   instance.proxy = new Proxy(instance, handler);
   const { data, render } = vnode.type;
-  if (isFunction(data)) {
+  if (data && isFunction(data)) {
     // data 中可以拿到props
     instance.data = reactive(data.call(instance.proxy));
   } else {
