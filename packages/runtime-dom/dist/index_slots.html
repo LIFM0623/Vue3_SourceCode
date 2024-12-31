@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      const RenderComponent = {
+        render(proxy) {
+          return h(Fragment, [
+            proxy.$slots.footer('fff'),
+            proxy.$slots.header('hhh')
+          ]);
+        }
+      };
+      const VueComponent = {
+        setup(props, { emit, attrs, expose, slots }) {
+          return (proxy) => {
+            return h(Rendercomponent, null, {
+              header: (t) => h('header', 'header' + t),
+              footer: (t) => h('footer', 'footer' + t)
+            });
+          };
+        }
+      };
+      render(h(Vuecomponent, {}), app);
+    </script>
+  </body>
+</html>

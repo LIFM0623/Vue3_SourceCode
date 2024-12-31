@@ -267,6 +267,12 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  const updateComponentPreRender = (instance, next) => {
+    instance.next = null;
+    instance.vnode = next; // instane.props
+    updateProps(instance, instance.props, next.props);
+  };
+
   function setupRenderEffect(instance, container, anchor) {
     const { render } = instance;
     const componentUpdateFn = () => {
@@ -278,6 +284,13 @@ export function createRenderer(renderOptions) {
         instance.isMounted = true;
       } else {
         // 基于状态的组件更新
+
+        const { next } = instance;
+        if (next) {
+          // 更新属性和插槽
+          updateComponentPreRender(instance, next);
+        }
+
         const subTree = render.call(instance.proxy, instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
@@ -307,31 +320,58 @@ export function createRenderer(renderOptions) {
     setupRenderEffect(instance, container, anchor);
   };
 
-const haspropsChange = (prevProps, nextProps)=>{
-  if(Object.keys(nextProps).length !== Object.keys(prevProps).length){
-    return true;
-  }
-  for(let i = 0;i<Object.keys(nextProps).length;i++){
-    const key = Object.keys(nextProps)[i];
-    if(nextProps[key]!== prevProps[key]){
+  const haspropsChange = (prevProps, nextProps) => {
+    if (Object.keys(nextProps).length !== Object.keys(prevProps).length) {
       return true;
     }
-  }
-  return false;
-}
-
-  const updateProps = (instance,prevProps, nextProps)=>{
-    if(haspropsChange(prevProps, nextProps)){
-      instance.props = nextProps;
+    for (let i = 0; i < Object.keys(nextProps).length; i++) {
+      const key = Object.keys(nextProps)[i];
+      if (nextProps[key] !== prevProps[key]) {
+        return true;
+      }
     }
-  }
+    return false;
+  };
 
-  const updateComponent = (n1, n2)=>{
+  const updateProps = (instance, prevProps, nextProps) => {
+    if (haspropsChange(prevProps, nextProps)) {
+      // 看属性是否存在变化
+      for (let key in nextProps) {
+        // 新的覆盖所有老的
+        instance.props[key] = nextProps[key];
+      }
+      for (let key in instance.props) {
+        // 删除多余的老的
+        if (!(key in nextProps)) {
+          delete instance.props[key];
+        }
+      }
+    }
+  };
+
+  const shouldComponentUpdate = (n1, n2) => {
+    const { props: prevProps, children: prevChildren } = n1;
+    const { props: nextProps, children: nextChildren } = n2;
+
+    if (prevChildren || nextChildren) return true; // 有插槽直接走重新渲染
+
+    if (prevProps === nextProps) return false;
+
+    return haspropsChange(prevProps, nextProps); // 属性不一致直接更新
+  };
+
+  const updateComponent = (n1, n2) => {
     const instance = (n2.component = n1.component); // 复用组件实例
-    const { props:prevProps } = n1;
-    const { props:nextProps } = n2;
-    updateProps(instance,prevProps, nextProps);
-  }
+
+    if (shouldComponentUpdate(n1, n2)) {
+      instance.next = n2; // 如果调用update  有next属性 说明是属性更新，插槽更新
+      instance.update(); // 让更新逻辑统一
+    }
+
+    // const { props: prevProps } = n1;
+    // const { props: nextProps } = n2;
+    // updateProps(instance, prevProps, nextProps);
+  };
 
   const processCompoent = (n1, n2, container, anchor) => {
     if (n1 === null) {
@@ -372,8 +412,11 @@ const haspropsChange = (prevProps, nextProps)=>{
   };
 
   const unmount = (vnode) => {
+    const { shapeFlag } = vnode;
     if (vnode.type === Fragment) {
       unmountChildren(vnode.children);
+    } else if (shapeFlag && ShapeFlags.COMPONENT) {
+      unmount(vnode.component.subTree);
     } else {
       hostRemove(vnode.el);
     }

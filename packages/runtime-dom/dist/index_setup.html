@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      //setup函数，每个组件只会执行一次，可以放入我们的compositionApi reactive ref
+      // 解决反复横跳问题Computed watch
+      // setup 返回render 函数
+      const Vuecomponent = {
+        setup(props, { emit, attrs, expose, slots }) {
+          //reactive comput
+          //提供渲染逻辑
+          console.log(props, attrs, expose, slots);
+          return () => {
+            // 可以返回函数 也可以返回对象
+            return h('div', 'abnc');
+          };
+        },
+        render(proxy) {
+          return h('div', 'ccc');
+        }
+      };
+    </script>
+  </body>
+</html>

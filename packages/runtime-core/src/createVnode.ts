@@ -14,7 +14,7 @@ export function createVnode(type, props, children?) {
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT // 元素
     : isObject(type)
-    ? ShapeFlags.STATEFUL_COMPONENT  //组件
+    ? ShapeFlags.STATEFUL_COMPONENT //组件
     : 0;
   const vnode = {
     __v_isvnode: true,
@@ -29,6 +29,8 @@ export function createVnode(type, props, children?) {
   if (children) {
     if (Array.isArray(children)) {
       vnode.shapeFlag |= ShapeFlags.ARRAY_CHILDREN;
+    } else if (isObject(children)) {
+      vnode.shapeFlag |= ShapeFlags.SLOTS_CHILDREN; // 组件的孩子
     } else {
       children = String(children);
       vnode.shapeFlag |= ShapeFlags.TEXT_CHILDREN;

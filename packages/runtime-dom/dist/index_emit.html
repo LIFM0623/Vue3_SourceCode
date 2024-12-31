@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      const VueComponent = {
+        setup(props, { emit }) {
+          return (proxy) => {
+            return h('button', {
+              onClick: () => {
+                emit('onMyEvent', 100);
+              }
+            });
+          };
+        }
+      };
+
+      render(
+        h(VueComponent, {
+          onMyEvent: (val) => {
+            alert(val);
+          }
+        }),
+        app
+      );
+    </script>
+  </body>
+</html>
