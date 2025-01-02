@@ -404,6 +404,15 @@ export function createRenderer(renderOptions) {
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
           processElement(n1, n2, container, anchor); // 对元素处理
+        } else if (shapeFlag & ShapeFlags.TELEPORT) {
+          type.process(n1, n2, container, anchor,{
+            mountChildren,
+            patchChildren,
+            move(vnode,container,anchor){
+              // 此方法将组件或者dom元素移动到指定位置
+              hostInsert(vnode.component?vnode.component.subTree.el:vnode.el,container,anchor)
+            }
+          });
         } else if (shapeFlag & ShapeFlags.COMPONENT) {
           // 对组件进行处理 vue3函数时组件 废弃了 没有性能节约
           processCompoent(n1, n2, container, anchor);
@@ -417,7 +426,10 @@ export function createRenderer(renderOptions) {
       unmountChildren(vnode.children);
     } else if (shapeFlag && ShapeFlags.COMPONENT) {
       unmount(vnode.component.subTree);
-    } else {
+    } else if (shapeFlag & ShapeFlags.TELEPORT) {
+      vnode.type.remove(vnode,unmountChildren)
+    }
+    else {
       hostRemove(vnode.el);
     }
   };

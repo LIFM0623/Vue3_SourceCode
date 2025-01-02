@@ -15,6 +15,7 @@ export function createComponentInstance(vnode) {
     component: null,
     proxy: null, // 用来代理 props attrs data 让用户更方便的使用
     setupState: {},
+    exposed:null
   };
   return instance;
 }
@@ -98,6 +99,9 @@ export function setupComponent(instance) {
     const setupContext = {
       slots: instance.slots,
       attrs: instance.attrs,
+      expose: (value)=>{
+        instance.exposed = value;
+      },
       emit: (event, ...payload) => {
         const eventName = `on${event[0].toUpperCase()}${event.slice(1)}`;
         const handler = instance.vnode.props[eventName];
