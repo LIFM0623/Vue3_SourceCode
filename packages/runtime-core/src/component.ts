@@ -1,7 +1,7 @@
 import { proxyRefs, reactive } from '@vue/reactivity';
 import { hasOwn, isFunction, ShapeFlags } from '@vue/shared';
 
-export function createComponentInstance(vnode) {
+export function createComponentInstance(vnode, parent) {
   const instance = {
     data: null,
     vnode,
@@ -15,7 +15,11 @@ export function createComponentInstance(vnode) {
     component: null,
     proxy: null, // 用来代理 props attrs data 让用户更方便的使用
     setupState: {},
-    exposed:null
+    exposed: null,
+    parent,
+    // p1 -> p2 -> p3
+    // 所有的组件provide 都一样
+    provides: parent ? parent.provides : Object.create(null),  // 这样创建的 obj 没有原型链
   };
   return instance;
 }
@@ -99,7 +103,7 @@ export function setupComponent(instance) {
     const setupContext = {
       slots: instance.slots,
       attrs: instance.attrs,
-      expose: (value)=>{
+      expose: (value) => {
         instance.exposed = value;
       },
       emit: (event, ...payload) => {

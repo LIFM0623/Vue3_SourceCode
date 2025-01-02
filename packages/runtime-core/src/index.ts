@@ -4,3 +4,4 @@ export * from './h';
 export * from './renderer';
 export * from './createVnode';
 export * from './Teleport';
+export * from './apiProvide';
