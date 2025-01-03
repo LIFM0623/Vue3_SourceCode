@@ -19,7 +19,7 @@ export function createComponentInstance(vnode, parent) {
     parent,
     // p1 -> p2 -> p3
     // 所有的组件provide 都一样
-    provides: parent ? parent.provides : Object.create(null),  // 这样创建的 obj 没有原型链
+    provides: parent ? parent.provides : Object.create(null) // 这样创建的 obj 没有原型链
   };
   return instance;
 }
@@ -113,7 +113,9 @@ export function setupComponent(instance) {
       }
     };
 
+    setCurrentInstance(instance);
     const setupResult = setup(instance.props, setupContext);
+    unsetCurrentInstance();
     if (isFunction(setupResult)) {
       instance.render = setupResult;
     } else {
@@ -132,3 +134,16 @@ export function setupComponent(instance) {
     instance.render = render;
   }
 }
+
+export let currentInstance = null;
+export const getCurrentInstance = () => {
+  return currentInstance;
+};
+
+export const setCurrentInstance = (instance) => {
+  currentInstance = instance;
+};
+
+export const unsetCurrentInstance = () => {
+  currentInstance = null;
+};

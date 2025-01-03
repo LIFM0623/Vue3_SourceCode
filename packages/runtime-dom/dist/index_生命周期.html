@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      const VueComponent = {
+        setup(props, { emit, expose, slots, attrs }) {
+          // instance -> 钩子关联在一起，再特定的时间去调用对应的钩子
+          onBeforeMount(() => {
+            console.log('onBeforeMount');
+          });
+          onMounted(() => {
+            console.log('onMounted');
+          });
+          onBeforeUpdate(() => {
+            console.log('onBeforeUpdate');
+          });
+          onUpdated(() => {
+            console.log('onUpdated');
+          });
+          const val = ref('a');
+          setTimeout(() => {
+            val.value = 'b';
+          }, 1000);
+          return () => {
+            return h('div', val.value);
+          };
+        }
+      };
+      // 父初始化->子初始化->父初始化完成
+      // 父更新->子更新->子更新完成->父更新完成
+      render(h(VueComponent), app);
+    </script>
+  </body>
+</html>

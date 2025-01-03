@@ -1,9 +1,10 @@
 import { hasOwn, ShapeFlags } from '@vue/shared';
 import { createVnode, Fragment, isSameVode, Text } from './createVnode';
 import getSequence from './seq';
-import { reactive, ReactiveEffect } from '@vue/reactivity';
+import { isRef, reactive, ReactiveEffect } from '@vue/reactivity';
 import { queueJob } from './scheduler';
 import { createComponentInstance, setupComponent } from './component';
+import { invokeArray } from './apiLifecycle';
 
 export function createRenderer(renderOptions) {
   // core 中不关心如何渲染
@@ -284,27 +285,55 @@ export function createRenderer(renderOptions) {
     updateProps(instance, instance.props, next.props);
   };
 
+  function renderComponet(instance) {
+    const { render, vnode, proxy, props, attrs } = instance;
+    if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+      return render.call(proxy, proxy);
+    } else {
+      // 函数式组件
+      // 此写法不使用了  vue3中没有任何性能优化
+      return vnode.type(attrs);
+    }
+  }
+
   function setupRenderEffect(instance, container, anchor, parentComponent) {
     const { render } = instance;
     const componentUpdateFn = () => {
       // 区分 首次还是之后的更新
+      const { bm, m } = instance;
       if (!instance.isMounted) {
-        const subTree = render.call(instance.proxy, instance.proxy);
+        if (bm) {
+          invokeArray(bm);
+        }
+
+        const subTree = renderComponet(instance);
         instance.subTree = subTree;
         patch(null, subTree, container, anchor, parentComponent);
         instance.isMounted = true;
+
+        if (m) {
+          invokeArray(m);
+        }
       } else {
         // 基于状态的组件更新
 
-        const { next } = instance;
+        const { next, bu, u } = instance;
         if (next) {
           // 更新属性和插槽
           updateComponentPreRender(instance, next);
         }
 
-        const subTree = render.call(instance.proxy, instance.proxy);
+        if (bu) {
+          invokeArray(bu);
+        }
+
+        const subTree = renderComponet(instance);
         patch(instance.subTree, subTree, container, anchor, instance);
         instance.subTree = subTree;
+
+        if (u) {
+          invokeArray(u);
+        }
       }
     };
 
@@ -407,7 +436,7 @@ export function createRenderer(renderOptions) {
     }
 
     // type
-    const { type, shapeFlag } = n2;
+    const { type, shapeFlag, ref } = n2;
     switch (type) {
       case Text:
         processText(n1, n2, container);
@@ -436,7 +465,21 @@ export function createRenderer(renderOptions) {
           processCompoent(n1, n2, container, anchor, parentComponent);
         }
     }
+    if (ref !== null) {
+      // n2 是dom 还是组件 还是组件有expose
+      setRef(ref, n2);
+    }
   };
+
+  function setRef(rawRef, vnode) {
+    let value =
+      vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT
+        ? vnode.component.exposed || vnode.component.proxy
+        : vnode.el;
+    if (isRef(rawRef)) {
+      rawRef.value = value;
+    }
+  }
 
   const unmount = (vnode) => {
     const { shapeFlag } = vnode;

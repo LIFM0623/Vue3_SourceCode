@@ -28,7 +28,8 @@ export function createVnode(type, props, children?) {
     children,
     key: props?.key, // diff 算法需要的key
     el: null, //   虚拟节点对应的真实节点
-    shapeFlag
+    shapeFlag,
+    ref:props?.ref,
   };
 
   if (children) {
