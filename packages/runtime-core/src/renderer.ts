@@ -283,16 +283,19 @@ export function createRenderer(renderOptions) {
     instance.next = null;
     instance.vnode = next; // instane.props
     updateProps(instance, instance.props, next.props);
+
+    // 组件更新得时候 需要更新插槽
+    Object.assign(instance.slots,next.children)
   };
 
   function renderComponet(instance) {
-    const { render, vnode, proxy, props, attrs } = instance;
+    const { render, vnode, proxy, props, attrs,slots } = instance;
     if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
       return render.call(proxy, proxy);
     } else {
       // 函数式组件
       // 此写法不使用了  vue3中没有任何性能优化
-      return vnode.type(attrs);
+      return vnode.type(attrs,{slots});
     }
   }
 
