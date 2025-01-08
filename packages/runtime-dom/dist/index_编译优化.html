@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      //  ******编译优化 diff 算法
+      // P51-
+      // patchFlag 相关 block blockTree
+      // 数组存储 只比较存储的
+
+      // 可以试想一下，如果不增加这个 block，前后元素不一致是无法做到靶向更新的。因为
+      // dynamicChildren 中还有可能有其他层级的元素。同时这里还生成了一个Fragment，因为前
+      // 后元素个数不一致，所以称之为不稳定序列。
+      //   例如 v-for 稳定与不稳定区分
+
+      //   hosited   死值
+      //   如果创建的 超过20个一样且没有属性的标签 ，他会把这转换为字符串   * 静态提升
+      // 函数缓存
+
+      // 优化： 即 原来全量递归 vs 优化后靶向更新（线性比对）
+    </script>
+  </body>
+</html>

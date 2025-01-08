@@ -23,20 +23,26 @@ export function createRenderer(renderOptions) {
   } = renderOptions;
 
   const normalize = (children) => {
-    for (let i = 0; i < children.length; i++) {
-      if (typeof children[i] === 'string' || typeof children[i] === 'number') {
-        children[i] = createVnode(Text, null, String(children[i]));
+    if (Array.isArray(children)) {
+      for (let i = 0; i < children.length; i++) {
+        if (
+          typeof children[i] === 'string' ||
+          typeof children[i] === 'number'
+        ) {
+          children[i] = createVnode(Text, null, String(children[i]));
+        }
       }
     }
+
     return children;
   };
 
-  const mountChildren = (children, container, parentComponent) => {
+  const mountChildren = (children, container, anchor, parentComponent) => {
     normalize(children);
     for (let i = 0; i < children.length; i++) {
       // children[i] 可是能纯文本
 
-      patch(null, children[i], container, parentComponent);
+      patch(null, children[i], container, anchor, parentComponent);
     }
   };
 
@@ -58,7 +64,7 @@ export function createRenderer(renderOptions) {
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
       hostSetElementText(el, children);
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-      mountChildren(children, el, parentComponent);
+      mountChildren(children, el, anchor, parentComponent);
     }
 
     // hostSetElementText(el, children);
@@ -70,7 +76,7 @@ export function createRenderer(renderOptions) {
       // 初始化操作
       mountElement(n2, container, anchor, parentComponent);
     } else {
-      patchElement(n1, n2, container, parentComponent);
+      patchElement(n1, n2, container, anchor, parentComponent);
     }
   };
 
@@ -203,7 +209,7 @@ export function createRenderer(renderOptions) {
     }
   };
 
-  const patchChildren = (n1, n2, el, parentComponent) => {
+  const patchChildren = (n1, n2, el, anchor, parentComponent) => {
     // text array null
     const c1 = n1.children;
     const c2 = normalize(n2.children);
@@ -239,13 +245,13 @@ export function createRenderer(renderOptions) {
           hostSetElementText(el, '');
         }
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-          mountChildren(c2, el, parentComponent);
+          mountChildren(c2, el, anchor, parentComponent);
         }
       }
     }
   };
 
-  const patchElement = (n1, n2, container, parentComponent) => {
+  const patchElement = (n1, n2, container, anchor, parentComponent) => {
     // 1. 比较元素的差异 肯定要复用dom元素
     // 2. 比较属性和元素的子节点
     let el = (n2.el = n1.el); // 对dom元素的复用
@@ -256,7 +262,7 @@ export function createRenderer(renderOptions) {
     // hostPatchProp 只针对某一个属性来处理
     patchProps(oldProps, newProps, el);
     // 比较儿子
-    patchChildren(n1, n2, el, parentComponent);
+    patchChildren(n1, n2, el, anchor, parentComponent);
   };
 
   const processText = (n1, n2, container) => {
@@ -272,11 +278,11 @@ export function createRenderer(renderOptions) {
     }
   };
 
-  const processFragment = (n1, n2, container, parentComponent) => {
+  const processFragment = (n1, n2, container, anchor, parentComponent) => {
     if (n1 === null) {
-      mountChildren(n2.children, container, parentComponent);
+      mountChildren(n2.children, container, anchor, parentComponent);
     } else {
-      patchChildren(n1, n2, container, parentComponent);
+      patchChildren(n1, n2, container, anchor, parentComponent);
     }
   };
 
@@ -460,7 +466,7 @@ export function createRenderer(renderOptions) {
         processText(n1, n2, container);
         break;
       case Fragment:
-        processFragment(n1, n2, container, parentComponent);
+        processFragment(n1, n2, container, anchor, parentComponent);
         break;
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
@@ -504,7 +510,7 @@ export function createRenderer(renderOptions) {
 
     if (shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE) {
       // 走keep失活逻辑
-      parentComponent.ctx.deactivate(vnode)
+      parentComponent.ctx.deactivate(vnode);
     } else if (vnode.type === Fragment) {
       unmountChildren(vnode.children, parentComponent);
     } else if (shapeFlag && ShapeFlags.COMPONENT) {
